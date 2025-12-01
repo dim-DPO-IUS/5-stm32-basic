@@ -1,0 +1,10 @@
+22:46:55 **** Build of configuration Debug for project hw1 ****
+make -j16 all 
+arm-none-eabi-size  hw1.elf 
+   text	   data	    bss	    dec	    hex	filename
+   7856	     12	   1644	   9512	   2528	hw1.elf
+Finished building: default.size.stdout
+ 
+
+22:46:56 Build Finished. 0 errors, 0 warnings. (took 69ms)
+

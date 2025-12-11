@@ -60,8 +60,8 @@ all: main-build
 main-build: hw1.elf secondary-outputs
 
 # Tool invocations
-hw1.elf hw1.map: $(OBJS) $(USER_OBJS) /media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1/STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "hw1.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="hw1.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+hw1.elf hw1.map: $(OBJS) $(USER_OBJS) /mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1/STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "hw1.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="hw1.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -3,8 +3,21 @@
 	<section name="WorkbenchPreferenceDialog.dialogBounds">
 		<item key="DIALOG_X_ORIGIN" value="493"/>
 		<item key="DIALOG_Y_ORIGIN" value="127"/>
-		<item key="DIALOG_WIDTH" value="1106"/>
-		<item key="DIALOG_HEIGHT" value="787"/>
-		<item key="DIALOG_FONT_NAME" value="1|Ubuntu|10.0|0|GTK|1|"/>
+		<item key="DIALOG_WIDTH" value="791"/>
+		<item key="DIALOG_HEIGHT" value="749"/>
+		<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+	</section>
+	<section name="ImportExportAction">
+		<item key="ImportExportPage.STORE_SELECTED_IMPORT_WIZARD_ID" value="org.eclipse.ui.wizards.import.ExternalProject"/>
+		<list key="ImportExportPage.STORE_EXPANDED_IMPORT_CATEGORIES">
+			<item value="org.eclipse.ui.Basic"/>
+		</list>
+		<section name="ImportExportWizard.dialogBounds">
+			<item key="DIALOG_X_ORIGIN" value="385"/>
+			<item key="DIALOG_Y_ORIGIN" value="147"/>
+			<item key="DIALOG_WIDTH" value="613"/>
+			<item key="DIALOG_HEIGHT" value="550"/>
+			<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+		</section>
 	</section>
 </section>

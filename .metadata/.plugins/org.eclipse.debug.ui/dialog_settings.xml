@@ -20,8 +20,13 @@
 		</section>
 	</section>
 	<section name="org.eclipse.debug.ui.LAUNCH_CONFIGURATION_PROPERTIES_DIALOG_SECTION">
-		<item key="DIALOG_WIDTH" value="848"/>
-		<item key="DIALOG_HEIGHT" value="642"/>
+		<item key="DIALOG_WIDTH" value="851"/>
+		<item key="DIALOG_HEIGHT" value="702"/>
+		<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+	</section>
+	<section name="org.eclipse.debug.ui.SCOPED_SAVE_SELECTION_DIALOG">
+		<item key="DIALOG_WIDTH" value="304"/>
+		<item key="DIALOG_HEIGHT" value="396"/>
 		<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
 	</section>
 </section>

@@ -2,6 +2,23 @@
 <section name="Workbench">
 	<section name="ExternalProjectImportWizard">
 		<item key="WizardProjectsImportPage.STORE_NESTED_PROJECTS" value="true"/>
+		<item key="WizardProjectsImportPage.STORE_COPY_PROJECT_ID" value="true"/>
+		<item key="WizardProjectsImportPage.STORE_ARCHIVE_SELECTED" value="false"/>
+		<item key="WizardProjectsImportPage.STORE_CLOSE_CREATED_PROJECTS_ID" value="false"/>
+		<item key="WizardProjectsImportPage.STORE_HIDE_CONFLICTING_PROJECTS_ID" value="false"/>
+		<list key="WizardProjectsImportPage.STORE_DIRECTORIES">
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1"/>
+		</list>
+		<list key="WizardProjectsImportPage.STORE_ARCHIVES">
+			<item value=""/>
+		</list>
+		<section name="ExternalProjectImportWizard.dialogBounds">
+			<item key="DIALOG_X_ORIGIN" value="385"/>
+			<item key="DIALOG_Y_ORIGIN" value="147"/>
+			<item key="DIALOG_WIDTH" value="755"/>
+			<item key="DIALOG_HEIGHT" value="791"/>
+			<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+		</section>
 	</section>
 	<section name="SaveAsDialogSettings">
 		<item key="DIALOG_X_ORIGIN" value="642"/>

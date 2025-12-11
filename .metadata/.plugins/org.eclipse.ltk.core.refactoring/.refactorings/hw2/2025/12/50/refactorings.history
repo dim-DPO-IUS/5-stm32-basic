@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;hw2/Core/Src/led_init.h&apos; to &apos;led_callaback.h&apos;" description="Rename resource &apos;led_init.h&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Core/Src/led_init.h" name="led_callaback.h" stamp="1765132422449" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;hw2/Core/Src/led_init.c&apos; to &apos;led_callaback.c&apos;" description="Rename resource &apos;led_init.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Core/Src/led_init.c" name="led_callaback.c" stamp="1765132448119" updateReferences="true"/>
+</session>

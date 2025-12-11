@@ -1,0 +1,2 @@
+../Core/Src/led_callaback.c:17:6:init_led	40	static
+../Core/Src/led_callaback.c:36:6:HAL_GPIO_EXTI_Callback	16	static,ignoring_inline_asm

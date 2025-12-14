@@ -103,8 +103,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      // В этом простом примере мы не читаем USB,
-      // а просто ждем команды через callback
+      // просто ждем команды через callback
       HAL_Delay(100);
     /* USER CODE END WHILE */
 

@@ -17,15 +17,15 @@
 		<item key="DIALOG_X_ORIGIN" value="657"/>
 		<item key="DIALOG_Y_ORIGIN" value="221"/>
 		<item key="DIALOG_WIDTH" value="613"/>
-		<item key="DIALOG_HEIGHT" value="449"/>
-		<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+		<item key="DIALOG_HEIGHT" value="443"/>
+		<item key="DIALOG_FONT_NAME" value="1|Ubuntu|10.0|0|GTK|1|"/>
 	</section>
 	<section name="NewSourceFileCreationWizard.dialogBounds">
 		<item key="DIALOG_X_ORIGIN" value="657"/>
 		<item key="DIALOG_Y_ORIGIN" value="221"/>
 		<item key="DIALOG_WIDTH" value="613"/>
-		<item key="DIALOG_HEIGHT" value="449"/>
-		<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+		<item key="DIALOG_HEIGHT" value="443"/>
+		<item key="DIALOG_FONT_NAME" value="1|Ubuntu|10.0|0|GTK|1|"/>
 	</section>
 	<section name="org.eclipse.cdt.ui.text.hover.CMacroExpansionExploration.internal">
 		<item key="size.width" value="1022"/>

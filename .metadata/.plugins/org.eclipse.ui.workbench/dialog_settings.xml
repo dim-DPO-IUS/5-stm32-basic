@@ -2,10 +2,10 @@
 <section name="Workbench">
 	<section name="WorkbenchPreferenceDialog.dialogBounds">
 		<item key="DIALOG_X_ORIGIN" value="493"/>
-		<item key="DIALOG_Y_ORIGIN" value="127"/>
-		<item key="DIALOG_WIDTH" value="791"/>
-		<item key="DIALOG_HEIGHT" value="749"/>
-		<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+		<item key="DIALOG_Y_ORIGIN" value="0"/>
+		<item key="DIALOG_WIDTH" value="1206"/>
+		<item key="DIALOG_HEIGHT" value="1045"/>
+		<item key="DIALOG_FONT_NAME" value="1|Ubuntu|10.0|0|GTK|1|"/>
 	</section>
 	<section name="ImportExportAction">
 		<item key="ImportExportPage.STORE_SELECTED_IMPORT_WIZARD_ID" value="org.eclipse.ui.wizards.import.ExternalProject"/>
@@ -19,5 +19,23 @@
 			<item key="DIALOG_HEIGHT" value="550"/>
 			<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
 		</section>
+	</section>
+	<section name="org.eclipse.ui.internal.QuickAccess">
+		<item key="org.eclipse.ui.internal.quickaccess.QuickAccessDialogDIALOG_WIDTH" value="525"/>
+		<item key="org.eclipse.ui.internal.quickaccess.QuickAccessDialogDIALOG_HEIGHT" value="540"/>
+		<item key="org.eclipse.ui.internal.quickaccess.QuickAccessDialogDIALOG_USE_PERSISTED_SIZE" value="true"/>
+		<item key="org.eclipse.ui.internal.quickaccess.QuickAccessDialogDIALOG_USE_PERSISTED_LOCATION" value="false"/>
+		<list key="orderedElements">
+			<item value="com.st.stm32cube.ide.mcu.ide.ui.wizard.ThreadSafe"/>
+		</list>
+		<list key="orderedProviders">
+			<item value="org.eclipse.ui.wizards"/>
+		</list>
+		<list key="textEntries">
+			<item value="1"/>
+		</list>
+		<list key="textArray">
+			<item value="generat"/>
+		</list>
 	</section>
 </section>

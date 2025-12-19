@@ -41,6 +41,16 @@
 		<item key="SmartImportRootWizardPage.STORE_NESTED_PROJECTS" value="true"/>
 		<item key="SmartImportRootWizardPage.STORE_CONFIGURE_NATURES" value="true"/>
 		<list key="org.eclipse.ui.internal.wizards.datatransfer.SmartImportRootWizardPage.knownSources">
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/lec6_4"/>
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/lec3"/>
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw3"/>
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw2"/>
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1"/>
+			<item value="/media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/lec3"/>
+			<item value="/media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw5"/>
+			<item value="/media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw3"/>
+			<item value="/media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw2"/>
+			<item value="/media/dim0k/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw1"/>
 			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/liction/hw5"/>
 			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/liec_5"/>
 			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/liction/liec_5"/>
@@ -52,9 +62,9 @@
 		<section name="SmartImportWizard.dialogBounds">
 			<item key="DIALOG_X_ORIGIN" value="521"/>
 			<item key="DIALOG_Y_ORIGIN" value="60"/>
-			<item key="DIALOG_WIDTH" value="885"/>
-			<item key="DIALOG_HEIGHT" value="691"/>
-			<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+			<item key="DIALOG_WIDTH" value="880"/>
+			<item key="DIALOG_HEIGHT" value="662"/>
+			<item key="DIALOG_FONT_NAME" value="1|Ubuntu|10.0|0|GTK|1|"/>
 		</section>
 	</section>
 </section>

@@ -5,4 +5,4 @@
 //org.eclipse.debug.core.PREFERRED_DELEGATES/org.eclipse.cdt.launch.remoteApplicationLaunchType=org.eclipse.rse.remotecdt.dsf.debug,debug,;
 eclipse.preferences.version=1
 org.eclipse.debug.core.PREF_DELETE_CONFIGS_ON_PROJECT_DELETE=false
-prefWatchExpressions=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\n<watchExpressions>\n    <expression enabled\="true" text\="nbr"/>\n    <expression enabled\="true" text\="adc_value"/>\n    <expression enabled\="true" text\="val"/>\n</watchExpressions>\n
+prefWatchExpressions=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\n<watchExpressions>\n    <expression enabled\="true" text\="status"/>\n    <expression enabled\="true" text\="in_buff"/>\n    <expression enabled\="true" text\="in_buff"/>\n    <expression enabled\="true" text\="rx_buf"/>\n    <expression enabled\="true" text\="tx_char"/>\n</watchExpressions>\n

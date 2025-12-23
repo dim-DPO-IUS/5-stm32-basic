@@ -1,2 +1,4 @@
 adc_value
 HAL_ADC_GetValue(&hadc1)
+in_buff
+in_buff

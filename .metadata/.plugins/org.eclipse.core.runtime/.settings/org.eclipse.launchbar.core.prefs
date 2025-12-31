@@ -15,6 +15,7 @@ org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw6\ Debug/activeLaunchTarget=n
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw7\ Debug/activeLaunchMode=run
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw7\ Debug/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw7_1\ Debug/activeLaunchTarget=null\:---
+org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8\ Debug\ (1)/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8\ Debug/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8_1\ Debug/activeLaunchMode=run
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8_1\ Debug/activeLaunchTarget=null\:---

@@ -123,7 +123,6 @@ int main(void) {
 	FRESULT fr = -1;
 
 	// Запускаем ADC и PWM
-	HAL_ADC_Start(&hadc1);
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 
 	// Устанавливаем ШИМ на 50%

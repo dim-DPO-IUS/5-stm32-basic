@@ -122,25 +122,25 @@ int main(void) {
 	memcpy(ramdisk, (uint8_t*) 0x8060000, SECTORS * SECTOR_SIZE);
 	FRESULT fr = -1;
 
-	// Запускаем ADC и PWM
-	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
-
-	// Устанавливаем ШИМ на 50%
-	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 500);
-
 	// Монтируем файловую систему из ОЗУ
 	fr = f_mount(&USERFatFS, USERPath, 1);
 	if (fr != FR_OK) {
 		Error_Handler();
 	}
 
+	// --------------------------------
+	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);	// Запускаем  PWM
+	HAL_TIM_Base_Start(&htim2); // Запускаем TIM2 - будет генерировать TRGO каждые 100 мкс
+	HAL_ADC_Start_IT(&hadc1); // Запускаем ADC с прерываниями, ждём триггер от TIM2
+	HAL_TIM_Base_Start(&htim5); // ЗАПУСКАЕМ ТАЙМЕР ТИМ5 - временнЫе метки
+	// --------------------------------
+
+	// Устанавливаем ШИМ на 50%
+	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 500);
+
 	// Инициализируем CSV файл (создаем если нет, очищаем если есть)
 	csv_logger_init();
 
-	// ЗАПУСКАЕМ ТАЙМЕР И ADC С ПРЕРЫВАНИЯМИ
-	HAL_TIM_Base_Start(&htim2); // Запускаем TIM2 - будет генерировать TRGO каждые 100 мкс
-	HAL_ADC_Start_IT(&hadc1); // Запускаем ADC с прерываниями, ждём триггер от TIM2
-	HAL_TIM_Base_Start(&htim5); // ЗАПУСКАЕМ ТАЙМЕР ТИМ5
 	// ========================================================================
 	/* USER CODE END 2 */
 

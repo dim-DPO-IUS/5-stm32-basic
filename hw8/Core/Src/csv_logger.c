@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// ДОБАВИТЬ ЭТИ ЗАГОЛОВКИ:
+//
 #include "main.h"           // для HAL_GetTick()
 #include "fatfs.h"         // для FIL, FRESULT, FA_*, FR_*
 #include "ff.h"            // для функций FATFS (f_open, f_write и т.д.)
@@ -24,7 +24,7 @@ void csv_logger_init(void) {
 		FRESULT fr = f_open(&csv_file, CSV_FILENAME,
 		FA_WRITE | FA_CREATE_ALWAYS);
 		if (fr == FR_OK) {
-			// ИЗМЕНЯЕМ ЗАГОЛОВОК на новый формат
+			// 
 			f_puts("timestamp; adc_mv; delta\n", &csv_file);
 			f_sync(&csv_file);
 			csv_file_initialized = true;
@@ -34,40 +34,7 @@ void csv_logger_init(void) {
 	}
 }
 
-// НОВАЯ ФУНКЦИЯ с нужным форматом
-//void csv_logger_write_timestamp(uint32_t timestamp, uint16_t pwm_mv,
-//		uint32_t delta) {
-//	if (buffer_index >= CSV_BUFFER_SIZE - 30) {
-//		csv_logger_flush();
-//	}
-//
-//	// НОВЫЙ ФОРМАТ: timestamp; pwm_mv; delta
-//	int len = snprintf(csv_buffer + buffer_index,
-//	CSV_BUFFER_SIZE - buffer_index, "%lu;%d;%lu\n", timestamp, pwm_mv, delta);
-//
-//	if (len > 0 && (buffer_index + len) < CSV_BUFFER_SIZE) {
-//		buffer_index += len;
-//		data_counter++;
-//	} else {
-//		csv_logger_flush();
-//	}
-//}
-
-// Старая функция (оставляем для совместимости)
-//void csv_logger_write(uint16_t pwm_mv, uint16_t adc_mv) {
-//	uint32_t current_time = HAL_GetTick();
-//	int len = snprintf(csv_buffer + buffer_index,
-//	CSV_BUFFER_SIZE - buffer_index, "%lu,%d,%d\n", current_time, pwm_mv,
-//			adc_mv);
-//	if (len > 0 && (buffer_index + len) < CSV_BUFFER_SIZE) {
-//		buffer_index += len;
-//		data_counter++;
-//	} else {
-//		csv_logger_flush();
-//	}
-//}
-
-// НОВАЯ ФУНКЦИЯ с нужным форматом - ТОЛЬКО ОДНО ОПРЕДЕЛЕНИЕ
+// 
 void csv_logger_write_timestamp(uint32_t timestamp, uint16_t adc_mv,
 		uint32_t delta_32) {
 	if (buffer_index >= CSV_BUFFER_SIZE - 30) {

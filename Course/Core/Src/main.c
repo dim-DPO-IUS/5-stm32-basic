@@ -70,14 +70,9 @@ int32_t derivative = 0;
 int32_t last_error = 0;
 
 // Целочисленные коэффициенты (умноженные на PID_SCALE)
-#define KP (1000)   // 0.4 - пропорциональный
-#define KI (80)     // 0.002 - интегральный
-#define KD (300)    // 0.03 - дифференциальный
-
-// ВРЕМЕННЫЕ КОЭФФИЦИЕНТЫ ДЛЯ ДИАГНОСТИКИ
-//#define KP (5000)   // 5.0 - очень сильная пропорциональная реакция
-//#define KI (0)      // 0   - интеграл отключен
-//#define KD (0)      // 0   - дифференциал отключен
+#define KP (1000)   // пропорциональный
+#define KI (80)     // интегральный
+#define KD (300)    // дифференциальный
 
 // АЦП переменные
 uint16_t adc_raw = 0;
@@ -104,9 +99,29 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 // ============================================================================
+// ФУНКЦИИ ПРЕОБРАЗОВАНИЯ (фиксированная точка)
+// ADC значение (0-4095) → милливольты (0-3300)
+static inline int32_t adc_to_millivolts(uint16_t adc_val) {
+	// adc_val * 3300 / 4095
+	// Упрощаем: 3300/4095 ≈ 16125/20000 (для точности в целых числах)
+	return ((int32_t) adc_val * 3300L) / 4095L;
+}
+
+// Уставка (0-1023) → милливольты (0-3300)
+static inline int32_t setpoint_to_millivolts(uint16_t setpoint_1023) { // <-- uint16_t!
+	// setpoint * 3300 / 1023
+	return ((int32_t) setpoint_1023 * 3300L) / 1023L;
+}
+
+// Милливольты → значение для Plotter (0-1023 для обратной совместимости)
+static inline uint16_t millivolts_to_plotter(int32_t mv) {
+	// mv * 1023 / 3300
+	return (uint16_t) ((mv * 1023L) / 3300L);
+}
+
 // Простой Целочисленный ПИД регулятор
-int32_t pid_update(int32_t sp, int32_t fb) {
-	error = sp - fb;
+int32_t pid_update_mv(int32_t sp_mv, int32_t fb_mv) {
+	error = sp_mv - fb_mv;
 
 	integral += error;
 	if (integral > 5000 * PID_SCALE)
@@ -117,10 +132,10 @@ int32_t pid_update(int32_t sp, int32_t fb) {
 	derivative = error - last_error;
 	last_error = error;
 
-	// Вычисление с масштабированием
+	// Вычисление с масштабированием (коэффициенты остаются те же!)
 	output = (KP * error + KI * integral + KD * derivative) / PID_SCALE;
 
-	// Ограничение выхода
+	// Ограничение выхода (ШИМ 0-1000)
 	if (output > 1000)
 		output = 1000;
 	if (output < 0)
@@ -128,21 +143,6 @@ int32_t pid_update(int32_t sp, int32_t fb) {
 
 	return output;
 }
-
-//int32_t pid_update(int32_t sp, int32_t fb) {
-//	error = sp - fb;
-//
-//	// ТОЛЬКО ПРОПОРЦИОНАЛЬНАЯ СОСТАВЛЯЮЩАЯ
-//	output = (KP * error) / PID_SCALE;
-//
-//	// Ограничение выхода
-//	if (output > 1000)
-//		output = 1000;
-//	if (output < 0)
-//		output = 0;
-//
-//	return output;
-//}
 
 // Обработчик прерывания таймера 4 (100 Гц)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -155,16 +155,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	// 1. Получаем значение АЦП
 	adc_raw = HAL_ADC_GetValue(&hadc1);
-	feedback = (int32_t) adc_raw;  // 0-4095
-	adc_mv = adc_raw * 3300 / 4095;
 
-	// 2. Вычисляем ПИД
-	int32_t pid_output = pid_update(setpoint, feedback);
+	// 2. Конвертируем в милливольты
+	int32_t feedback_mv = adc_to_millivolts(adc_raw);
+	feedback = feedback_mv;  // Сохраняем для отладки (в милливольтах!)
+	adc_mv = (uint16_t) feedback_mv;
 
-	// 3. Обновляем ШИМ
+	// 3. Уставка тоже должна быть в милливольтах
+	// (setpoint уже в милливольтах после преобразования в UART обработчике)
+
+	// 4. Вычисляем ПИД с милливольтами
+	int32_t pid_output = pid_update_mv(setpoint, feedback_mv);
+
+	// 5. Обновляем ШИМ
 	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, (uint16_t )pid_output);
 
-	// 4. Флаг для отладки (если нужен)
+	// 6. Флаг для отладки
 	adc_data_ready = 1;
 }
 
@@ -175,7 +181,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			if (inx > 0) {
 				buffer[inx] = '\0';
 				int value = atoi(buffer);
-				setpoint = (int32_t) value * 4095 / 1023;
+
+				// ПРОВЕРКА ДИАПАЗОНА!
+				if (value < 0)
+					value = 0;
+				if (value > 1023)
+					value = 1023;
+
+				// Преобразуем 0-1023 → 0-3300 милливольт
+				setpoint = setpoint_to_millivolts((uint16_t) value); // <-- явное преобразование
 				new_setpoint_received = 1;
 				inx = 0;
 			}
@@ -235,11 +249,9 @@ int main(void) {
 	HAL_TIM_Base_Start_IT(&htim4);
 
 	// Инициализация ПИД
-	setpoint = 500 * 4095 / 1023; // Начальная уставка ~500 (без float!)
-	output = 500; // Начальный выход 50%
+	setpoint = 1650;  // 1650 милливольт = 1.65 Вольт
+	output = 500;     // Начальный выход 50%
 
-//	integral = 0;
-//	last_error = 0;
 	// ========================================================================
 	/* USER CODE END 2 */
 
@@ -254,10 +266,19 @@ int main(void) {
 		static uint32_t last_plot_time = 0;
 		if (HAL_GetTick() - last_plot_time >= 50) {
 			char plot_data[50];
-			uint16_t sp_plot = (uint16_t) (setpoint * 1023 / 4095);
-			uint16_t fb_plot = (uint16_t) (feedback * 1023 / 4095);
+
+			// Уставка уже в милливольтах, конвертируем для Plotter (0-1023)
+			uint16_t sp_plot = millivolts_to_plotter(setpoint);
+
+			// Обратная связь в милливольтах, конвертируем для Plotter
+			uint16_t fb_plot = millivolts_to_plotter(feedback);
+
+			// Выход ШИМ (0-1000 → 0-1023)
 			uint16_t out_plot = __HAL_TIM_GET_COMPARE(&htim4, TIM_CHANNEL_1)
 					* 1023 / 1000;
+
+			// ДОПОЛНИТЕЛЬНО: выводим реальные милливольты для отладки
+			// sprintf(plot_data, "SP:%dmV, FB:%dmV, PWM:%d\r\n", setpoint, feedback, out_plot);
 
 			sprintf(plot_data, "%u,%u,%u\r\n", sp_plot, fb_plot, out_plot);
 			HAL_UART_Transmit(&huart2, (uint8_t*) plot_data, strlen(plot_data),

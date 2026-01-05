@@ -47,7 +47,6 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
-TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart1;
@@ -71,9 +70,14 @@ int32_t derivative = 0;
 int32_t last_error = 0;
 
 // Целочисленные коэффициенты (умноженные на PID_SCALE)
-#define KP (400)   // 0.4 - пропорциональный
-#define KI (2)     // 0.002 - интегральный
-#define KD (30)    // 0.03 - дифференциальный
+#define KP (1000)   // 0.4 - пропорциональный
+#define KI (80)     // 0.002 - интегральный
+#define KD (300)    // 0.03 - дифференциальный
+
+// ВРЕМЕННЫЕ КОЭФФИЦИЕНТЫ ДЛЯ ДИАГНОСТИКИ
+//#define KP (5000)   // 5.0 - очень сильная пропорциональная реакция
+//#define KI (0)      // 0   - интеграл отключен
+//#define KD (0)      // 0   - дифференциал отключен
 
 // АЦП переменные
 uint16_t adc_raw = 0;
@@ -92,53 +96,23 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
-
 /* USER CODE BEGIN 0 */
 // ============================================================================
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	adc_data_ready = 1;
-}
-
-// Обработчик прерывания UART
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	if (huart->Instance == USART1) {
-		if (rx_data == '\n') {
-			if (inx > 0) {
-				buffer[inx] = '\0';
-				int value = atoi(buffer);
-
-				// Нормализуем 0-1023 → 0-4095 (Arduino → Nucleo ADC)
-				setpoint = (int32_t) value * 4095 / 1023;
-				new_setpoint_received = 1;
-
-				inx = 0;
-			}
-		} else if (rx_data >= '0' && rx_data <= '9') {
-			if (inx < sizeof(buffer) - 1) {
-				buffer[inx++] = rx_data;
-			}
-		}
-
-		HAL_UART_Receive_IT(&huart1, &rx_data, 1);
-	}
-}
-
 // Простой Целочисленный ПИД регулятор
 int32_t pid_update(int32_t sp, int32_t fb) {
 	error = sp - fb;
 
 	integral += error;
-	if (integral > 1000 * PID_SCALE)
-		integral = 1000 * PID_SCALE;
-	if (integral < -1000 * PID_SCALE)
-		integral = -1000 * PID_SCALE;
+	if (integral > 5000 * PID_SCALE)
+		integral = 5000 * PID_SCALE;
+	if (integral < -5000 * PID_SCALE)
+		integral = -5000 * PID_SCALE;
 
 	derivative = error - last_error;
 	last_error = error;
@@ -154,6 +128,66 @@ int32_t pid_update(int32_t sp, int32_t fb) {
 
 	return output;
 }
+
+//int32_t pid_update(int32_t sp, int32_t fb) {
+//	error = sp - fb;
+//
+//	// ТОЛЬКО ПРОПОРЦИОНАЛЬНАЯ СОСТАВЛЯЮЩАЯ
+//	output = (KP * error) / PID_SCALE;
+//
+//	// Ограничение выхода
+//	if (output > 1000)
+//		output = 1000;
+//	if (output < 0)
+//		output = 0;
+//
+//	return output;
+//}
+
+// Обработчик прерывания таймера 4 (100 Гц)
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM4) {
+		// Запускаем АЦП преобразование
+		HAL_ADC_Start_IT(&hadc1);
+	}
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	// 1. Получаем значение АЦП
+	adc_raw = HAL_ADC_GetValue(&hadc1);
+	feedback = (int32_t) adc_raw;  // 0-4095
+	adc_mv = adc_raw * 3300 / 4095;
+
+	// 2. Вычисляем ПИД
+	int32_t pid_output = pid_update(setpoint, feedback);
+
+	// 3. Обновляем ШИМ
+	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, (uint16_t )pid_output);
+
+	// 4. Флаг для отладки (если нужен)
+	adc_data_ready = 1;
+}
+
+// Обработчик прерывания UART (оставляем как есть)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart->Instance == USART1) {
+		if (rx_data == '\n') {
+			if (inx > 0) {
+				buffer[inx] = '\0';
+				int value = atoi(buffer);
+				setpoint = (int32_t) value * 4095 / 1023;
+				new_setpoint_received = 1;
+				inx = 0;
+			}
+		} else if (rx_data >= '0' && rx_data <= '9') {
+			if (inx < sizeof(buffer) - 1) {
+				buffer[inx++] = rx_data;
+			}
+		}
+		HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+	}
+}
+
 // ============================================================================
 /* USER CODE END 0 */
 
@@ -188,23 +222,24 @@ int main(void) {
 	MX_ADC1_Init();
 	MX_TIM4_Init();
 	MX_USART2_UART_Init();
-	MX_TIM2_Init();
 	MX_USART1_UART_Init();
-
 	/* USER CODE BEGIN 2 */
 	// ========================================================================
 	// Приветствие в USB
 	HAL_UART_Transmit(&huart2, (uint8_t*) "Ready\r\n", 7, 100);
 	// Включаем прием по прерыванию
 	HAL_UART_Receive_IT(&huart1, &rx_data, 1);
-
-	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);	// Запускаем  PWM
-	HAL_TIM_Base_Start(&htim2); // Запускаем TIM2 - будет генерировать TRGO каждые 100 мкс
-	HAL_ADC_Start_IT(&hadc1); // Запускаем ADC с прерываниями, ждём триггер от TIM2
+	// Запускаем  PWM
+	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+	// Запуск Таймера 4 с прерываниями
+	HAL_TIM_Base_Start_IT(&htim4);
 
 	// Инициализация ПИД
 	setpoint = 500 * 4095 / 1023; // Начальная уставка ~500 (без float!)
 	output = 500; // Начальный выход 50%
+
+//	integral = 0;
+//	last_error = 0;
 	// ========================================================================
 	/* USER CODE END 2 */
 
@@ -212,33 +247,11 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 		// ====================================================================
-		// Получение обратной связи от АЦП
-		if (adc_data_ready) {
-			adc_raw = HAL_ADC_GetValue(&hadc1);
-			feedback = (int32_t) adc_raw;  // 0-4095
-			adc_mv = adc_raw * 3300 / 4095;
-			adc_data_ready = 0;
-		}
+		// УДАЛИТЬ весь блок с adc_data_ready и ПИД вычислением!
+		// Оставить ТОЛЬКО отрисовку:
 
-		// Обновление уставки от Arduino
-		if (new_setpoint_received) {
-			new_setpoint_received = 0;
-		}
-
-		// ПИД расчет и обновление ШИМ (каждые 10-20мс)
-		static uint32_t last_pid_time = 0;
+		// Отправка данных для Plotter (каждые 50 мс)
 		static uint32_t last_plot_time = 0;
-
-		if (HAL_GetTick() - last_pid_time >= 10) {  // 100 Гц!
-			int32_t pid_output = pid_update(setpoint, feedback);
-
-			// Устанавливаем ШИМ
-			__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, (uint16_t )pid_output);
-
-			last_pid_time = HAL_GetTick();
-		}
-
-		// Отправка данных для Plotter (каждые 50мс)
 		if (HAL_GetTick() - last_plot_time >= 50) {
 			char plot_data[50];
 			uint16_t sp_plot = (uint16_t) (setpoint * 1023 / 4095);
@@ -251,6 +264,13 @@ int main(void) {
 					100);
 
 			last_plot_time = HAL_GetTick();
+		}
+
+		// Можно добавить мигание светодиодом для индикации работы
+		static uint32_t last_led_time = 0;
+		if (HAL_GetTick() - last_led_time >= 500) {
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			last_led_time = HAL_GetTick();
 		}
 		// ====================================================================
 		/* USER CODE END WHILE */
@@ -327,8 +347,8 @@ static void MX_ADC1_Init(void) {
 	hadc1.Init.ScanConvMode = DISABLE;
 	hadc1.Init.ContinuousConvMode = DISABLE;
 	hadc1.Init.DiscontinuousConvMode = DISABLE;
-	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-	hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
+	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	hadc1.Init.NbrOfConversion = 1;
 	hadc1.Init.DMAContinuousRequests = DISABLE;
@@ -348,48 +368,6 @@ static void MX_ADC1_Init(void) {
 	/* USER CODE BEGIN ADC1_Init 2 */
 
 	/* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
- * @brief TIM2 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_TIM2_Init(void) {
-
-	/* USER CODE BEGIN TIM2_Init 0 */
-
-	/* USER CODE END TIM2_Init 0 */
-
-	TIM_ClockConfigTypeDef sClockSourceConfig = { 0 };
-	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
-
-	/* USER CODE BEGIN TIM2_Init 1 */
-
-	/* USER CODE END TIM2_Init 1 */
-	htim2.Instance = TIM2;
-	htim2.Init.Prescaler = 72 - 1;
-	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.Period = 100 - 1;
-	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
-		Error_Handler();
-	}
-	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-	if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK) {
-		Error_Handler();
-	}
-	sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_ENABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig)
-			!= HAL_OK) {
-		Error_Handler();
-	}
-	/* USER CODE BEGIN TIM2_Init 2 */
-
-	/* USER CODE END TIM2_Init 2 */
 
 }
 

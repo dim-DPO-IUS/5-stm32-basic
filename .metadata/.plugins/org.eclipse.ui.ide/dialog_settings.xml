@@ -15,9 +15,9 @@
 		<section name="ExternalProjectImportWizard.dialogBounds">
 			<item key="DIALOG_X_ORIGIN" value="385"/>
 			<item key="DIALOG_Y_ORIGIN" value="147"/>
-			<item key="DIALOG_WIDTH" value="755"/>
-			<item key="DIALOG_HEIGHT" value="791"/>
-			<item key="DIALOG_FONT_NAME" value="1|Sans|9.0|0|GTK|1|"/>
+			<item key="DIALOG_WIDTH" value="613"/>
+			<item key="DIALOG_HEIGHT" value="758"/>
+			<item key="DIALOG_FONT_NAME" value="1|Ubuntu|10.0|0|GTK|1|"/>
 		</section>
 	</section>
 	<section name="SaveAsDialogSettings">
@@ -41,6 +41,8 @@
 		<item key="SmartImportRootWizardPage.STORE_NESTED_PROJECTS" value="true"/>
 		<item key="SmartImportRootWizardPage.STORE_CONFIGURE_NATURES" value="true"/>
 		<list key="org.eclipse.ui.internal.wizards.datatransfer.SmartImportRootWizardPage.knownSources">
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/Course_Avr"/>
+			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/Course"/>
 			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw8"/>
 			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/hw8_2"/>
 			<item value="/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/leciono8"/>

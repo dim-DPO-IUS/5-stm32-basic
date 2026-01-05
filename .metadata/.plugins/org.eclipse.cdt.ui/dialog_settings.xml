@@ -41,4 +41,6 @@
 			<item value="APP_RX_DATA_SIZE"/>
 		</list>
 	</section>
+	<section name="RenameInformationPopup">
+	</section>
 </section>

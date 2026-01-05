@@ -2,8 +2,9 @@ LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/arch
 LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/name=Local
 LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/os=linux
 activeLaunchTarget=null\:---
-configDescList=org.eclipse.launchbar.core.descriptorType.default\:lec6_3 Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8 Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8 Debug (1),org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw8 Debug (2)
+configDescList=org.eclipse.launchbar.core.descriptorType.default\:lec6_3 Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Course Debug (1),org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Course Debug (2),org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Course Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Course Debug (3)
 eclipse.preferences.version=1
+org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Course\ Debug\ (1)/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw1\ Debug/activeLaunchMode=run
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw1\ Debug/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:hw2\ Debug/activeLaunchMode=run

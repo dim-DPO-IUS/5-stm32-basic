@@ -16,14 +16,119 @@ static SPI_HandleTypeDef *tft_spi = NULL;
 #define TFT_DC_CMD()    HAL_GPIO_WritePin(TFT_DC_GPIO_Port, TFT_DC_Pin, GPIO_PIN_RESET)
 #define TFT_DC_DATA()   HAL_GPIO_WritePin(TFT_DC_GPIO_Port, TFT_DC_Pin, GPIO_PIN_SET)
 
+//=====================================================================
+static int32_t last_prototype_value = 0;
+static char last_prototype_str[6] = "0.000"; // Формат: d.ddd
+
+// Простой моноширинный шрифт 10x16
+const MonoFont font_mono_10x16 = { .width = 10, // Каждая цифра шириной 10 пикселей
+		.height = 16,   // Высота 16 пикселей
+		.spacing = 2    // 2 пикселя между цифрами
+		};
+
+// Функция для рисования одной моноширинной цифры
+static void draw_mono_digit(uint16_t x, uint16_t y, char digit, uint16_t color,
+		uint16_t bg_color) {
+	// 1. Устанавливаем окно точно под одну цифру
+	TFT_SetWindow(x, y, x + font_mono_10x16.width - 1,
+			y + font_mono_10x16.height - 1);
+
+	// 2. Подготавливаем буфер для ОДНОЙ цифры (фон + текст сразу)
+	uint8_t buffer[font_mono_10x16.width * font_mono_10x16.height * 2];
+	uint16_t index = 0;
+
+	// 3. Заполняем буфер в зависимости от цифры
+	// (В реальной реализации здесь будет битмап цифры)
+	for (int row = 0; row < font_mono_10x16.height; row++) {
+		for (int col = 0; col < font_mono_10x16.width; col++) {
+			// Простая логика: для прототипа рисуем только цифру '7'
+			uint16_t pixel_color =
+					(digit == '7' && col > 2 && col < 8 && row > 4 && row < 12) ?
+							color : bg_color;
+
+			buffer[index++] = pixel_color >> 8;
+			buffer[index++] = pixel_color & 0xFF;
+		}
+	}
+
+	// 4. Отправляем весь буфер за одну операцию SPI
+	TFT_DC_DATA();
+	HAL_SPI_Transmit(tft_spi, buffer, sizeof(buffer), 100);
+}
+
+// Преобразование числа в строку фиксированного формата d.ddd
+static void format_fixed_point(int32_t value, char *buffer) {
+	// value = 1650 → "1.650"
+	// value = -27  → "-0.027"
+
+	if (value < 0) {
+		buffer[0] = '-';
+		value = -value;
+	} else {
+		buffer[0] = ' ';
+	}
+
+	// Целая часть (1 цифра)
+	buffer[1] = '0' + (value / 1000);
+
+	// Точка
+	buffer[2] = '.';
+
+	// Дробная часть (3 цифры)
+	int32_t fraction = value % 1000;
+	buffer[3] = '0' + (fraction / 100);
+	buffer[4] = '0' + ((fraction % 100) / 10);
+	buffer[5] = '0' + (fraction % 10);
+	buffer[6] = '\0';
+}
+
+// Основная функция прототипа
+void TFT_UpdateSingleNumber(uint16_t x, uint16_t y, int32_t new_value) {
+	char new_str[7];
+
+	// 1. Форматируем новое значение
+	format_fixed_point(new_value, new_str);
+
+	// 2. Сравниваем с предыдущим значением
+	for (int i = 0; i < 6; i++) { // 6 символов: знак, цифра, точка, 3 цифры
+		if (new_str[i] != last_prototype_str[i]) {
+			// 3. Вычисляем позицию для этого символа
+			uint16_t char_x = x
+					+ i * (font_mono_10x16.width + font_mono_10x16.spacing);
+
+			// 4. Рисуем только изменившийся символ
+			if (new_str[i] == '.') {
+				// Точка - особый случай (просто маленький прямоугольник)
+				TFT_FillRect(char_x + 3, y + font_mono_10x16.height - 4, 4, 4,
+				TFT_WHITE);
+			} else {
+				// Цифра или знак
+				draw_mono_digit(char_x, y, new_str[i], TFT_WHITE, TFT_BLACK);
+			}
+
+			// 5. Обновляем запомненный символ
+			last_prototype_str[i] = new_str[i];
+		}
+	}
+
+	// Сохраняем значение для следующего сравнения
+	last_prototype_value = new_value;
+}
+
+//=====================================================================
+
 // Внутренние функции SPI
 static void TFT_WriteCommand(uint8_t cmd) {
 	TFT_DC_CMD();
+//	while (tft_spi->State == HAL_SPI_STATE_BUSY)
+//		; // ЖДАТЬ
 	HAL_SPI_Transmit(tft_spi, &cmd, 1, 10);
 }
 
 static void TFT_WriteData(uint8_t data) {
 	TFT_DC_DATA();
+//	while (tft_spi->State == HAL_SPI_STATE_BUSY)
+//		; // ЖДАТЬ
 	HAL_SPI_Transmit(tft_spi, &data, 1, 10);
 }
 
@@ -387,6 +492,71 @@ void TFT_DrawStringCentered(uint16_t y, const char *str, uint8_t font_id,
 
 	// Рисуем строку
 	TFT_DrawString(x_pos, y, str, font_id, color, bgcolor);
+}
+
+// Рисует моноширинный текст увеличенный в 2 раза
+void DrawMonoText2x(uint16_t x, uint16_t y, const char *text, uint16_t color,
+		uint16_t bg_color) {
+	uint16_t current_x = x;
+
+	while (*text) {
+		// Получаем данные символа
+		uint8_t *char_table = font_GetFontStruct(FONT_SMALL, (uint8_t) *text);
+		if (char_table) {
+			uint8_t width = font_GetCharWidth(char_table);  // 6
+			uint8_t height = font_GetCharHeight(char_table); // 8
+			char_table += 2;
+
+			uint8_t bytes_per_row = (width + 7) / 8;
+
+			// Устанавливаем окно на ВСЮ область символа (12x16 пикселей)
+			TFT_SetWindow(current_x, y, current_x + 11, y + 15);
+			TFT_DC_DATA();
+
+			// Создаем буфер для всей области 12x16 пикселей (384 байта)
+			uint8_t buffer[384]; // 12 * 16 * 2 = 384
+			uint16_t index = 0;
+
+			// Заполняем буфер
+			for (uint8_t row = 0; row < 16; row++) {
+				uint8_t src_row = row / 2; // Масштаб 2x
+
+				for (uint8_t col = 0; col < 12; col++) {
+					uint8_t src_col = col / 2; // Масштаб 2x
+
+					if (src_row < height && src_col < width) {
+						uint8_t byte_index = src_col / 8;
+						uint8_t bit_index = 7 - (src_col % 8);
+						uint8_t byte = char_table[src_row * bytes_per_row
+								+ byte_index];
+
+						if (byte & (1 << bit_index)) {
+							// Пиксель текста
+							buffer[index++] = color >> 8;
+							buffer[index++] = color & 0xFF;
+						} else {
+							// Фон
+							buffer[index++] = bg_color >> 8;
+							buffer[index++] = bg_color & 0xFF;
+						}
+					} else {
+						// За пределами символа - фон
+						buffer[index++] = bg_color >> 8;
+						buffer[index++] = bg_color & 0xFF;
+					}
+				}
+			}
+
+			// Отправляем весь буфер за одну операцию
+			HAL_SPI_Transmit(tft_spi, buffer, sizeof(buffer), 100);
+
+			current_x += 12; // 6 * 2
+		} else {
+			current_x += 12;
+		}
+
+		text++;
+	}
 }
 
 // ============================================================================

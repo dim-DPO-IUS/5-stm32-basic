@@ -72,7 +72,7 @@ void HAL_MspInit(void)
   __HAL_RCC_SYSCFG_CLK_ENABLE();
   __HAL_RCC_PWR_CLK_ENABLE();
 
-  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_1);
+  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_2);
 
   /* System interrupt init*/
 
@@ -250,6 +250,32 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 
 }
 
+/**
+  * @brief TIM_Base MSP Initialization
+  * This function configures the hardware resources used in this example
+  * @param htim_base: TIM_Base handle pointer
+  * @retval None
+  */
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
+{
+  if(htim_base->Instance==TIM10)
+  {
+    /* USER CODE BEGIN TIM10_MspInit 0 */
+
+    /* USER CODE END TIM10_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM10_CLK_ENABLE();
+    /* TIM10 interrupt Init */
+    HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
+    /* USER CODE BEGIN TIM10_MspInit 1 */
+
+    /* USER CODE END TIM10_MspInit 1 */
+
+  }
+
+}
+
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -302,6 +328,31 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* htim_pwm)
 }
 
 /**
+  * @brief TIM_Base MSP De-Initialization
+  * This function freeze the hardware resources used in this example
+  * @param htim_base: TIM_Base handle pointer
+  * @retval None
+  */
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
+{
+  if(htim_base->Instance==TIM10)
+  {
+    /* USER CODE BEGIN TIM10_MspDeInit 0 */
+
+    /* USER CODE END TIM10_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_TIM10_CLK_DISABLE();
+
+    /* TIM10 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(TIM1_UP_TIM10_IRQn);
+    /* USER CODE BEGIN TIM10_MspDeInit 1 */
+
+    /* USER CODE END TIM10_MspDeInit 1 */
+  }
+
+}
+
+/**
   * @brief UART MSP Initialization
   * This function configures the hardware resources used in this example
   * @param huart: UART handle pointer
@@ -331,7 +382,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* USART1 interrupt Init */
-    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART1_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
     /* USER CODE BEGIN USART1_MspInit 1 */
 
@@ -358,7 +409,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* USART2 interrupt Init */
-    HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART2_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
     /* USER CODE BEGIN USART2_MspInit 1 */
 

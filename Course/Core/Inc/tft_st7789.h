@@ -4,6 +4,18 @@
 #include "main.h"
 #include "font.h"  // Основной заголовок шрифтов - он включает всё остальное
 
+typedef struct {
+	uint8_t width;      // Фиксированная ширина цифры (например, 10 пикселей)
+	uint8_t height;     // Высота цифры (например, 16 пикселей)
+	uint8_t spacing;    // Расстояние между цифрами (например, 2 пикселя)
+} MonoFont;
+
+// Простой моноширинный шрифт 10x16
+extern const MonoFont font_mono_10x16;
+
+// Новая функция для прототипа
+void TFT_UpdateSingleNumber(uint16_t x, uint16_t y, int32_t new_value);
+
 // ============================================================================
 // КОНСТАНТЫ ДИСПЛЕЯ
 // ============================================================================
@@ -35,7 +47,7 @@
 #define FONT_LARGE      FONTID_24F    // Крупные цифры (только 0-9)
 #define FONT_XLARGE     FONTID_32F    // Очень крупные цифры (только 0-9)
 
-// Для обратной совместимости с вашим кодом
+// Для обратной совместимости
 #define Font_7x10       FONTID_6X8M   // Ближайший аналог
 #define Font_11x18      FONTID_16F    // Ближайший аналог
 #define Font_16x26      FONTID_24F    // Ближайший аналог
@@ -104,6 +116,8 @@ void TFT_DrawString(uint16_t x, uint16_t y, const char *str, uint8_t font_id,
 void TFT_DrawStringCentered(uint16_t y, const char *str, uint8_t font_id,
 		uint16_t color, uint16_t bgcolor);
 
+void DrawMonoText2x(uint16_t x, uint16_t y, const char *text, uint16_t color,
+		uint16_t bg_color);
 // ============================================================================
 // PID-СПЕЦИФИЧНЫЕ ФУНКЦИИ (ЦЕЛОЧИСЛЕННЫЕ ВЕРСИИ)
 // ============================================================================

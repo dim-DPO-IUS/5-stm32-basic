@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include "display_tests.h"
 #include "tft_st7789.h"
+//#include "tft_pid.h"
 // ============================================================================
 /* USER CODE END Includes */
 
@@ -52,6 +53,7 @@ ADC_HandleTypeDef hadc1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim10;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -60,6 +62,7 @@ UART_HandleTypeDef huart2;
 // ============================================================================
 volatile uint8_t adc_data_ready = 0;
 volatile uint8_t new_setpoint_received = 0;
+volatile uint8_t display_update_needed = 0;
 
 // Целочисленный ПИД (фиксированная точка)
 #define PID_SCALE 1000  // Масштабирующий коэффициент
@@ -97,6 +100,7 @@ static void MX_TIM4_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -104,6 +108,9 @@ static void MX_SPI2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 // ============================================================================
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 // ФУНКЦИИ ПРЕОБРАЗОВАНИЯ (фиксированная точка)
 // ADC значение (0-4095) → милливольты (0-3300)
 static inline int32_t adc_to_millivolts(uint16_t adc_val) {
@@ -111,19 +118,25 @@ static inline int32_t adc_to_millivolts(uint16_t adc_val) {
 	// Упрощаем: 3300/4095 ≈ 16125/20000 (для точности в целых числах)
 	return ((int32_t) adc_val * 3300L) / 4095L;
 }
-
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 // Уставка (0-1023) → милливольты (0-3300)
 static inline int32_t setpoint_to_millivolts(uint16_t setpoint_1023) { // <-- uint16_t!
 	// setpoint * 3300 / 1023
 	return ((int32_t) setpoint_1023 * 3300L) / 1023L;
 }
-
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 // Милливольты → значение для Plotter (0-1023 для обратной совместимости)
 static inline uint16_t millivolts_to_plotter(int32_t mv) {
 	// mv * 1023 / 3300
 	return (uint16_t) ((mv * 1023L) / 3300L);
 }
-
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 // Простой Целочисленный ПИД регулятор
 int32_t pid_update_mv(int32_t sp_mv, int32_t fb_mv) {
 	error = sp_mv - fb_mv;
@@ -148,15 +161,9 @@ int32_t pid_update_mv(int32_t sp_mv, int32_t fb_mv) {
 
 	return output;
 }
-
-// Обработчик прерывания таймера 4 (100 Гц)
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if (htim->Instance == TIM4) {
-		// Запускаем АЦП преобразование
-		HAL_ADC_Start_IT(&hadc1);
-	}
-}
-
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	// 1. Получаем значение АЦП
 	adc_raw = HAL_ADC_GetValue(&hadc1);
@@ -178,7 +185,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	// 6. Флаг для отладки
 	adc_data_ready = 1;
 }
-
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 // Обработчик прерывания UART (оставляем как есть)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART1) {
@@ -206,7 +215,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 	}
 }
-// --------------------------------------------------------------
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
 void DisplayPIDInterface(void) {
 	// Очищаем экран
 	TFT_FillScreen(TFT_BLACK);
@@ -320,43 +331,99 @@ void UpdatePIDDisplay(int32_t setpoint, int32_t feedback, int32_t error,
 		last_large_feedback = feedback;
 	}
 }
+
+void UpdatePIDDisplaySimple(int32_t setpoint, int32_t feedback, int32_t error,
+		int16_t error_percent, uint16_t output_percent) {
+	char buffer[20];
+
+	// 1. Setpoint
+	sprintf(buffer, "%ld", setpoint);
+	TFT_DrawString(85, 35, buffer, FONT_MEDIUM, TFT_GREEN, TFT_BLACK);
+
+	// 2. Feedback
+	sprintf(buffer, "%ld", feedback);
+	TFT_DrawString(85, 60, buffer, FONT_MEDIUM, TFT_CYAN, TFT_BLACK);
+
+	// 3. Error
+	sprintf(buffer, "%ld", error);
+	TFT_DrawString(85, 85, buffer, FONT_MEDIUM, TFT_RED, TFT_BLACK);
+
+	// 4. Output percent
+	sprintf(buffer, "%d%%", output_percent / 10);
+	TFT_DrawString(200, 180, buffer, FONT_SMALL, TFT_WHITE, TFT_BLACK);
+}
+
+//------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------
+// Обработчик прерывания таймера 4 (100 Гц)
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM4) {
+		// Запускаем АЦП преобразование
+		HAL_ADC_Start_IT(&hadc1);
+	}
+
+	else if (htim->Instance == TIM1) {
+//		// Обновление дисплея
+//		// Вычисляем error_percent
+//		int16_t error_percent = 0;
+//		if (setpoint != 0) {
+//			error_percent = (error * 1000) / (setpoint / 2);
+//			if (error_percent > 1000)
+//				error_percent = 1000;
+//			if (error_percent < -1000)
+//				error_percent = -1000;
+//		}
+//
+//		// Используем output напрямую (уже 0-1000)
+//		UpdatePIDDisplay(setpoint, feedback, error, error_percent, output);
+
+//		static int counter = 0;
+//		counter++;
+//		char temp[20];
+//		sprintf(temp, "%d", counter);
+//		TFT_DrawString(50, 50, temp, FONT_MEDIUM, TFT_WHITE, TFT_BLACK);
+	}
+}
 // ============================================================================
 /* USER CODE END 0 */
 
 /**
- * @brief  The application entry point.
- * @retval int
- */
-int main(void) {
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
 
-	/* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
-	/* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-	/* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-	/* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-	/* USER CODE END Init */
+  /* USER CODE END Init */
 
-	/* Configure the system clock */
-	SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-	/* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-	/* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_ADC1_Init();
-	MX_TIM4_Init();
-	MX_USART2_UART_Init();
-	MX_USART1_UART_Init();
-	MX_SPI2_Init();
-	/* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_TIM4_Init();
+  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
+  MX_SPI2_Init();
+  MX_TIM10_Init();
+  /* USER CODE BEGIN 2 */
 	// ========================================================================
 	// Приветствие в USB
 	HAL_UART_Transmit(&huart2, (uint8_t*) "Ready\r\n", 7, 100);
@@ -364,9 +431,20 @@ int main(void) {
 	HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 	// Запускаем  PWM
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
-	// Запуск Таймера 4 с прерываниями
+	// Запуск Таймера 4 с прерываниями - Запускаем АЦП преобразование
 	HAL_TIM_Base_Start_IT(&htim4);
+	//************************************************************************
+	// Запуск Таймера 10 с прерываниями - Обновление дисплея
+	HAL_TIM_Base_Start_IT(&htim10);
+//	// Явно разрешить прерывание по обновлению
+//	__HAL_TIM_ENABLE_IT(&htim10, TIM_IT_UPDATE);
+//
+//	// Проверим регистр прерывания
+//	if (TIM10->DIER & TIM_DIER_UIE) {
+//		HAL_UART_Transmit(&huart2, (uint8_t*) "UIE_ON\r\n", 8, 100);
+//	}
 
+	//************************************************************************
 	// Инициализация ПИД
 	setpoint = 1650;  // 1650 милливольт = 1.65 Вольт
 	output = 500;     // Начальный выход 50%
@@ -375,59 +453,130 @@ int main(void) {
 
 //----------------------------------------------
 	TFT_Init(&hspi2);
-	DisplayPIDInterface();
+//	DisplayPIDInterface();
+//	TFT_FillScreen(TFT_BLACK); // Черный фон
+//	TFT_DrawString(10, 10, "TEST", FONT_SMALL, TFT_WHITE, TFT_BLACK);
+//	TFT_FillScreen(TFT_BLACK);
+
+//	TFT_FillScreen(TFT_BLACK);
 
 	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	// ========================================================================
-	/* USER CODE END 2 */
+//	// Тест 1: Статичный текст (без обновления)
+//	TFT_DrawString(50, 50, "STATIC", FONT_MEDIUM, TFT_WHITE, TFT_BLACK);
+//	HAL_Delay(3000);
+//
+//	// Тест 2: Динамический текст в цикле (без прерываний)
+//	for (int i = 0; i < 1000; i++) {
+//
+////		TFT_FillRect(50, 100, 100, 30, TFT_BLACK);
+//
+//		char temp[20];
+//		sprintf(temp, "VAL:%d", i);
+//		TFT_DrawString(50, 100, temp, FONT_LARGE, TFT_WHITE, TFT_BLACK);
+//		HAL_Delay(100); // 10 Гц
+//	}
+	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
+	// ========================================================================
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+
+	static uint32_t last_update = 0;
+	static int counter = 0;
+
 	while (1) {
 		// ====================================================================
-		static uint32_t last_calc_time = 0;
-		static uint32_t last_display_time = 0;
-		static int16_t calculated_error_percent = 0;
-		static uint16_t calculated_output_percent = 0;
-		uint32_t current_time = HAL_GetTick();
 
-		// ============================================================
-		// БЛОК 1: РАСЧЕТ значений для дисплея (50 мс = 20 Гц)
-		if (current_time - last_calc_time >= 50) {
-			// Вычисляем error_percent
-			int16_t error_percent = 0;
-			if (setpoint != 0) {
-				error_percent = (error * 1000) / (setpoint / 2);
-				if (error_percent > 1000)
-					error_percent = 1000;
-				if (error_percent < -1000)
-					error_percent = -1000;
+		if (HAL_GetTick() - last_update >= 100) { // 10 Гц (каждые 100 мс)
+			last_update = HAL_GetTick();
+
+			counter++;
+			if (counter > 9999)
+				counter = 0;
+
+			// 1. Рисуем заголовок обычным шрифтом
+			TFT_DrawString(50, 10, "MONO 2X TEST", FONT_SMALL, TFT_YELLOW,
+					TFT_BLACK);
+
+			// 2. Форматируем счетчик как PID значение: X.XXX
+			char buffer[10];
+			int32_t fake_value = counter; // 0-9999
+
+			if (fake_value < 0) {
+				sprintf(buffer, "-%01d.%03d", (-fake_value) / 1000,
+						(-fake_value) % 1000);
+			} else {
+				sprintf(buffer, " %01d.%03d", fake_value / 1000,
+						fake_value % 1000);
 			}
 
-			calculated_error_percent = error_percent;
-			calculated_output_percent = output;  // output уже 0-1000
+			// 3. Рисуем увеличенным в 2 раза
+			DrawMonoText2x(50, 50, buffer, TFT_GREEN, TFT_BLACK);
 
-			last_calc_time = current_time;
+			// 4. Для сравнения - обычный размер
+			TFT_DrawString(50, 80, "Normal:", FONT_SMALL, TFT_WHITE, TFT_BLACK);
+			TFT_DrawString(100, 80, buffer, FONT_SMALL, TFT_WHITE, TFT_BLACK);
+
+			// 5. Выводим в UART для отладки
+			char msg[50];
+			sprintf(msg, "Counter: %d -> %s\r\n", counter, buffer);
+			HAL_UART_Transmit(&huart2, (uint8_t*) msg, strlen(msg), 100);
 		}
 
-		// ============================================================
-		// БЛОК 2: ОБНОВЛЕНИЕ ДИСПЛЕЯ (20 мс = 50 Гц) - ОТДЕЛЬНО!
-		if (current_time - last_display_time >= 2) {
-			// ПРЯМОЙ ВЫЗОВ БЕЗ ВСЯКИХ РАСЧЕТОВ
-			UpdatePIDDisplay(setpoint, feedback, error,
-					calculated_error_percent, calculated_output_percent);
-
-			last_display_time = current_time;
-		}
-
-		// ============================================================
-		// БЛОК 3: ВСЯ ОСТАЛЬНАЯ ЛОГИКА - КАК БЫЛО РАНЬШЕ
+//		static uint32_t last_display = 0;
+//		if (HAL_GetTick() - last_display >= 100) { // 10 Гц
+//			last_display = HAL_GetTick();
+//
+//			// Вычислите error_percent здесь
+//			int16_t error_percent = 0;
+//			if (setpoint != 0) {
+//				error_percent = (error * 1000) / (setpoint / 2);
+//				if (error_percent > 1000)
+//					error_percent = 1000;
+//				if (error_percent < -1000)
+//					error_percent = -1000;
+//			}
+//
+//			// Вызовите упрощенную функцию
+//			UpdatePIDDisplaySimple(setpoint, feedback, error, error_percent,
+//					output);
+//		}
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//		static uint32_t last_display = 0;
+//		if (HAL_GetTick() - last_display >= 100) { // 10 Гц
+//			last_display = HAL_GetTick();
+//
+//			static int i = 0;
+//			i++;
+//			char temp[20];
+//			sprintf(temp, "VAL:%d", i);
+//			TFT_DrawString(50, 100, temp, FONT_LARGE, TFT_WHITE, TFT_BLACK);
+//			if (i > 1000)
+//				i = 0;
+//		}
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//		if (display_update_needed) {
+//			display_update_needed = 0;
+//
+//			// ТЕСТ ПРЯМОУГОЛЬНИКА
+//			static uint8_t toggle = 0;
+//			if (toggle == 0) {
+//				TFT_FillRect(50, 50, 100, 100, TFT_RED);
+////				TFT_FillScreen(TFT_RED);
+//				toggle = 1;
+//			} else {
+//				TFT_FillRect(50, 50, 100, 100, TFT_BLUE);
+////				TFT_FillScreen(TFT_BLUE);
+//				toggle = 0;
+//			}
+//		}
 
 		// Отправка данных для Plotter (каждые 50 мс)
 		static uint32_t last_plot_time = 0;
 		if (HAL_GetTick() - last_plot_time >= 50) {
 			char plot_data[50];
-
 			uint16_t sp_plot = millivolts_to_plotter(setpoint);
 			uint16_t fb_plot = millivolts_to_plotter(feedback);
 			uint16_t out_plot = __HAL_TIM_GET_COMPARE(&htim4, TIM_CHANNEL_1)
@@ -436,297 +585,341 @@ int main(void) {
 			sprintf(plot_data, "%u,%u,%u\r\n", sp_plot, fb_plot, out_plot);
 			HAL_UART_Transmit(&huart2, (uint8_t*) plot_data, strlen(plot_data),
 					100);
-
 			last_plot_time = HAL_GetTick();
 		}
 
-		// Индикация работы светодиодом (каждые 500 мс)
+//		 Индикация работы светодиодом (каждые 500 мс)
 		static uint32_t last_led_time = 0;
 		if (HAL_GetTick() - last_led_time >= 500) {
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			last_led_time = HAL_GetTick();
 		}
 		// ====================================================================
-		/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-		/* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 	}
-	/* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
- * @brief System Clock Configuration
- * @retval None
- */
-void SystemClock_Config(void) {
-	RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_RCC_PWR_CLK_ENABLE();
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-	/** Initializes the RCC Oscillators according to the specified parameters
-	 * in the RCC_OscInitTypeDef structure.
-	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-	RCC_OscInitStruct.PLL.PLLM = 4;
-	RCC_OscInitStruct.PLL.PLLN = 72;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-	RCC_OscInitStruct.PLL.PLLQ = 3;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-		Error_Handler();
-	}
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 3;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-	/** Initializes the CPU, AHB and APB buses clocks
-	 */
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
-			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
-		Error_Handler();
-	}
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /**
- * @brief ADC1 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_ADC1_Init(void) {
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
 
-	/* USER CODE BEGIN ADC1_Init 0 */
+  /* USER CODE BEGIN ADC1_Init 0 */
 
-	/* USER CODE END ADC1_Init 0 */
+  /* USER CODE END ADC1_Init 0 */
 
-	ADC_ChannelConfTypeDef sConfig = { 0 };
+  ADC_ChannelConfTypeDef sConfig = {0};
 
-	/* USER CODE BEGIN ADC1_Init 1 */
+  /* USER CODE BEGIN ADC1_Init 1 */
 
-	/* USER CODE END ADC1_Init 1 */
+  /* USER CODE END ADC1_Init 1 */
 
-	/** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-	 */
-	hadc1.Instance = ADC1;
-	hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-	hadc1.Init.ScanConvMode = DISABLE;
-	hadc1.Init.ContinuousConvMode = DISABLE;
-	hadc1.Init.DiscontinuousConvMode = DISABLE;
-	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc1.Init.NbrOfConversion = 1;
-	hadc1.Init.DMAContinuousRequests = DISABLE;
-	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-	if (HAL_ADC_Init(&hadc1) != HAL_OK) {
-		Error_Handler();
-	}
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-	/** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-	 */
-	sConfig.Channel = ADC_CHANNEL_0;
-	sConfig.Rank = 1;
-	sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		Error_Handler();
-	}
-	/* USER CODE BEGIN ADC1_Init 2 */
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
 
-	/* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
- * @brief SPI2 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_SPI2_Init(void) {
-
-	/* USER CODE BEGIN SPI2_Init 0 */
-
-	/* USER CODE END SPI2_Init 0 */
-
-	/* USER CODE BEGIN SPI2_Init 1 */
-
-	/* USER CODE END SPI2_Init 1 */
-	/* SPI2 parameter configuration*/
-	hspi2.Instance = SPI2;
-	hspi2.Init.Mode = SPI_MODE_MASTER;
-	hspi2.Init.Direction = SPI_DIRECTION_1LINE;
-	hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-	hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
-	hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
-	hspi2.Init.NSS = SPI_NSS_SOFT;
-	hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
-	hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
-	hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
-	hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-	hspi2.Init.CRCPolynomial = 10;
-	if (HAL_SPI_Init(&hspi2) != HAL_OK) {
-		Error_Handler();
-	}
-	/* USER CODE BEGIN SPI2_Init 2 */
-
-	/* USER CODE END SPI2_Init 2 */
+  /* USER CODE END ADC1_Init 2 */
 
 }
 
 /**
- * @brief TIM4 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_TIM4_Init(void) {
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI2_Init(void)
+{
 
-	/* USER CODE BEGIN TIM4_Init 0 */
+  /* USER CODE BEGIN SPI2_Init 0 */
 
-	/* USER CODE END TIM4_Init 0 */
+  /* USER CODE END SPI2_Init 0 */
 
-	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
-	TIM_OC_InitTypeDef sConfigOC = { 0 };
+  /* USER CODE BEGIN SPI2_Init 1 */
 
-	/* USER CODE BEGIN TIM4_Init 1 */
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
 
-	/* USER CODE END TIM4_Init 1 */
-	htim4.Instance = TIM4;
-	htim4.Init.Prescaler = 719 - 1;
-	htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim4.Init.Period = 1000 - 1;
-	htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_PWM_Init(&htim4) != HAL_OK) {
-		Error_Handler();
-	}
-	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig)
-			!= HAL_OK) {
-		Error_Handler();
-	}
-	sConfigOC.OCMode = TIM_OCMODE_PWM1;
-	sConfigOC.Pulse = 0;
-	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-	if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1)
-			!= HAL_OK) {
-		Error_Handler();
-	}
-	/* USER CODE BEGIN TIM4_Init 2 */
-
-	/* USER CODE END TIM4_Init 2 */
-	HAL_TIM_MspPostInit(&htim4);
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
 /**
- * @brief USART1 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_USART1_UART_Init(void) {
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
 
-	/* USER CODE BEGIN USART1_Init 0 */
+  /* USER CODE BEGIN TIM4_Init 0 */
 
-	/* USER CODE END USART1_Init 0 */
+  /* USER CODE END TIM4_Init 0 */
 
-	/* USER CODE BEGIN USART1_Init 1 */
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
-	/* USER CODE END USART1_Init 1 */
-	huart1.Instance = USART1;
-	huart1.Init.BaudRate = 115200;
-	huart1.Init.WordLength = UART_WORDLENGTH_8B;
-	huart1.Init.StopBits = UART_STOPBITS_1;
-	huart1.Init.Parity = UART_PARITY_NONE;
-	huart1.Init.Mode = UART_MODE_TX_RX;
-	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-	if (HAL_UART_Init(&huart1) != HAL_OK) {
-		Error_Handler();
-	}
-	/* USER CODE BEGIN USART1_Init 2 */
+  /* USER CODE BEGIN TIM4_Init 1 */
 
-	/* USER CODE END USART1_Init 2 */
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 719-1;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 1000-1;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
 
-}
-
-/**
- * @brief USART2 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_USART2_UART_Init(void) {
-
-	/* USER CODE BEGIN USART2_Init 0 */
-
-	/* USER CODE END USART2_Init 0 */
-
-	/* USER CODE BEGIN USART2_Init 1 */
-
-	/* USER CODE END USART2_Init 1 */
-	huart2.Instance = USART2;
-	huart2.Init.BaudRate = 115200;
-	huart2.Init.WordLength = UART_WORDLENGTH_8B;
-	huart2.Init.StopBits = UART_STOPBITS_1;
-	huart2.Init.Parity = UART_PARITY_NONE;
-	huart2.Init.Mode = UART_MODE_TX_RX;
-	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-	if (HAL_UART_Init(&huart2) != HAL_OK) {
-		Error_Handler();
-	}
-	/* USER CODE BEGIN USART2_Init 2 */
-
-	/* USER CODE END USART2_Init 2 */
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
 
 }
 
 /**
- * @brief GPIO Initialization Function
- * @param None
- * @retval None
- */
-static void MX_GPIO_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-	/* USER CODE BEGIN MX_GPIO_Init_1 */
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
 
-	/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN TIM10_Init 0 */
 
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	__HAL_RCC_GPIOH_CLK_ENABLE();
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	__HAL_RCC_GPIOB_CLK_ENABLE();
+  /* USER CODE END TIM10_Init 0 */
 
-	/*Configure GPIO pin Output Level */
-	HAL_GPIO_WritePin(GPIOA, TFT_RESET_Pin | TFT_DC_Pin | LD2_Pin,
-			GPIO_PIN_RESET);
+  /* USER CODE BEGIN TIM10_Init 1 */
 
-	/*Configure GPIO pin : B1_Pin */
-	GPIO_InitStruct.Pin = B1_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 7200-1;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 250-1;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
 
-	/*Configure GPIO pins : TFT_RESET_Pin TFT_DC_Pin LD2_Pin */
-	GPIO_InitStruct.Pin = TFT_RESET_Pin | TFT_DC_Pin | LD2_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  /* USER CODE END TIM10_Init 2 */
 
-	/* USER CODE BEGIN MX_GPIO_Init_2 */
+}
 
-	/* USER CODE END MX_GPIO_Init_2 */
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, TFT_RESET_Pin|TFT_DC_Pin|LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : B1_Pin */
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TFT_RESET_Pin TFT_DC_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = TFT_RESET_Pin|TFT_DC_Pin|LD2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -748,16 +941,17 @@ static void MX_GPIO_Init(void) {
 /* USER CODE END 4 */
 
 /**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
-void Error_Handler(void) {
-	/* USER CODE BEGIN Error_Handler_Debug */
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
 	__disable_irq();
 	while (1) {
 	}
-	/* USER CODE END Error_Handler_Debug */
+  /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
 /**

@@ -826,4 +826,59 @@ void TFT_DrawProgressBar(uint16_t x, uint16_t y, uint16_t width,
 	// 4. Рисуем рамку для красоты
 	TFT_DrawRect(x, y, width, height, TFT_WHITE);
 }
+
+/**
+ * @brief Горизонтальный прогресс-бар (заполняется слева направо)
+ * @param x, y Координаты левого верхнего угла
+ * @param width, height Размеры прогресс-бара
+ * @param fill_percent Заполнение в процентах (0..1000) где 1000 = 100.0%
+ * @param fill_color Цвет заполненной части
+ * @param bg_color Цвет фона
+ */
+void TFT_DrawHProgressBar(uint16_t x, uint16_t y, uint16_t width,
+		uint16_t height, uint16_t fill_percent, uint16_t fill_color,
+		uint16_t bg_color) {
+	uint16_t fill_width;
+
+	// Ограничиваем заполнение
+	if (fill_percent > 1000)
+		fill_percent = 1000;
+
+	// Вычисляем ширину заполненной части
+	fill_width = width * fill_percent / 1000;
+
+	// 1. Устанавливаем окно на ВСЮ область прогресс-бара
+	TFT_SetWindow(x, y, x + width - 1, y + height - 1);
+	TFT_DC_DATA();
+
+	// 2. Создаем буфер для всей области
+	uint16_t total_pixels = width * height;
+	uint8_t *buffer = malloc(total_pixels * 2);
+	uint32_t index = 0;
+
+	// 3. Заполняем буфер: слева заполненная часть, справа фон
+	for (uint16_t row = 0; row < height; row++) {
+		for (uint16_t col = 0; col < width; col++) {
+			uint16_t current_color;
+
+			if (col < fill_width) {
+				// Заполненная часть (слева)
+				current_color = fill_color;
+			} else {
+				// Фон
+				current_color = bg_color;
+			}
+
+			buffer[index++] = current_color >> 8;
+			buffer[index++] = current_color & 0xFF;
+		}
+	}
+
+	// 4. Отправляем за одну операцию (без дрожания!)
+	HAL_SPI_Transmit(tft_spi, buffer, total_pixels * 2, 100);
+	free(buffer);
+
+	// 5. Рамка (опционально)
+	TFT_DrawRect(x, y, width, height, TFT_WHITE);
+}
 //=========================================================================

@@ -188,6 +188,17 @@ void TFT_DrawProgressBar(uint16_t x, uint16_t y, uint16_t width,
 		uint16_t height, uint16_t fill_percent, uint16_t fill_color,
 		uint16_t bg_color);
 
+/**
+ * @brief Горизонтальный прогресс-бар (заполняется слева направо)
+ * @param x, y Координаты левого верхнего угла
+ * @param width, height Размеры прогресс-бара
+ * @param fill_percent Заполнение в процентах (0..1000) где 1000 = 100.0%
+ * @param fill_color Цвет заполненной части
+ * @param bg_color Цвет фона
+ */
+void TFT_DrawHProgressBar(uint16_t x, uint16_t y, uint16_t width,
+		uint16_t height, uint16_t fill_percent, uint16_t fill_color,
+		uint16_t bg_color);
 // ============================================================================
 // ВНУТРЕННИЕ ФУНКЦИИ (не для использования вне библиотеки)
 // ============================================================================

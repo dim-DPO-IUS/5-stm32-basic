@@ -1,96 +1,15 @@
-22:04:04 **** Incremental Build of configuration Debug for project Course ****
+19:35:38 **** Incremental Build of configuration Debug for project Course ****
 make -j16 all 
 arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F411xE -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
-../Core/Src/main.c: In function 'UpdatePIDDisplaySimple':
-../Core/Src/main.c:349:28: warning: format '%ld' expects argument of type 'long int', but argument 3 has type 'int' [-Wformat=]
-  349 |         sprintf(buffer, "%ld", setpoint);
-      |                          ~~^   ~~~~~~~~
-      |                            |   |
-      |                            |   int
-      |                            long int
-      |                          %d
-../Core/Src/main.c:353:28: warning: format '%ld' expects argument of type 'long int', but argument 3 has type 'int' [-Wformat=]
-  353 |         sprintf(buffer, "%ld", feedback);
-      |                          ~~^   ~~~~~~~~
-      |                            |   |
-      |                            |   int
-      |                            long int
-      |                          %d
-../Core/Src/main.c:357:28: warning: format '%ld' expects argument of type 'long int', but argument 3 has type 'int' [-Wformat=]
-  357 |         sprintf(buffer, "%ld", error);
-      |                          ~~^   ~~~~~
-      |                            |   |
-      |                            |   int
-      |                            long int
-      |                          %d
-In file included from ../Core/Src/main.c:30:
-../Core/Inc/tft_st7789.h: At top level:
-../Core/Inc/tft_st7789.h:205:13: warning: 'TFT_WriteCommand' declared 'static' but never defined [-Wunused-function]
-  205 | static void TFT_WriteCommand(uint8_t cmd);
-      |             ^~~~~~~~~~~~~~~~
-../Core/Inc/tft_st7789.h:206:13: warning: 'TFT_WriteData' declared 'static' but never defined [-Wunused-function]
-  206 | static void TFT_WriteData(uint8_t data);
-      |             ^~~~~~~~~~~~~
-../Core/Inc/tft_st7789.h:207:13: warning: 'TFT_WriteDataBurst' declared 'static' but never defined [-Wunused-function]
-  207 | static void TFT_WriteDataBurst(uint8_t *data, uint32_t size);
-      |             ^~~~~~~~~~~~~~~~~~
-../Core/Src/main.c: In function 'DrawPIDValue2x':
-../Core/Src/main.c:230:40: warning: '%03d' directive writing 3 bytes into a region of size between 1 and 7 [-Wformat-overflow=]
-  230 |                 sprintf(buffer, " %01d.%03d", value / 1000, value % 1000);
-      |                                        ^~~~
-../Core/Src/main.c:230:33: note: directive argument in the range [0, 999]
-  230 |                 sprintf(buffer, " %01d.%03d", value / 1000, value % 1000);
-      |                                 ^~~~~~~~~~~~
-../Core/Src/main.c:230:17: note: 'sprintf' output between 7 and 13 bytes into a destination of size 10
-  230 |                 sprintf(buffer, " %01d.%03d", value / 1000, value % 1000);
-      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-../Core/Src/main.c:228:40: warning: '%03d' directive writing 3 bytes into a region of size between 1 and 7 [-Wformat-overflow=]
-  228 |                 sprintf(buffer, "-%01d.%03d", (-value) / 1000, (-value) % 1000);
-      |                                        ^~~~
-../Core/Src/main.c:228:33: note: directive argument in the range [0, 999]
-  228 |                 sprintf(buffer, "-%01d.%03d", (-value) / 1000, (-value) % 1000);
-      |                                 ^~~~~~~~~~~~
-../Core/Src/main.c:228:17: note: 'sprintf' output between 7 and 13 bytes into a destination of size 10
-  228 |                 sprintf(buffer, "-%01d.%03d", (-value) / 1000, (-value) % 1000);
-      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-../Core/Src/main.c: In function 'UpdatePIDDisplayMono2x':
-../Core/Src/main.c:396:54: warning: '%03d' directive writing 3 bytes into a region of size between 1 and 7 [-Wformat-overflow=]
-  396 |                         sprintf(large_buffer, " %01d.%03d", feedback / 1000,
-      |                                                      ^~~~
-../Core/Src/main.c:396:47: note: directive argument in the range [0, 999]
-  396 |                         sprintf(large_buffer, " %01d.%03d", feedback / 1000,
-      |                                               ^~~~~~~~~~~~
-../Core/Src/main.c:396:25: note: 'sprintf' output between 7 and 13 bytes into a destination of size 10
-  396 |                         sprintf(large_buffer, " %01d.%03d", feedback / 1000,
-      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  397 |                                         feedback % 1000);
-      |                                         ~~~~~~~~~~~~~~~~
-../Core/Src/main.c:393:54: warning: '%03d' directive writing 3 bytes into a region of size between 1 and 7 [-Wformat-overflow=]
-  393 |                         sprintf(large_buffer, "-%01d.%03d", (-feedback) / 1000,
-      |                                                      ^~~~
-../Core/Src/main.c:393:47: note: directive argument in the range [0, 999]
-  393 |                         sprintf(large_buffer, "-%01d.%03d", (-feedback) / 1000,
-      |                                               ^~~~~~~~~~~~
-../Core/Src/main.c:393:25: note: 'sprintf' output between 7 and 13 bytes into a destination of size 10
-  393 |                         sprintf(large_buffer, "-%01d.%03d", (-feedback) / 1000,
-      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  394 |                                         (-feedback) % 1000);
-      |                                         ~~~~~~~~~~~~~~~~~~~
+arm-none-eabi-gcc "../Core/Src/uart_manager.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F411xE -c -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/uart_manager.d" -MT"Core/Src/uart_manager.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/uart_manager.o"
 arm-none-eabi-gcc -o "Course.elf" @"objects.list"   -mcpu=cortex-m4 -T"/mnt/DATA-1/0Dev/MC-Dev/0-LESSONS/01/src/work4dak/5-stm32-basic/Course/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Course.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 Finished building target: Course.elf
  
 arm-none-eabi-size  Course.elf 
 arm-none-eabi-objdump -h -S Course.elf  > "Course.list"
    text	   data	    bss	    dec	    hex	filename
-  41848	     96	   2416	  44360	   ad48	Course.elf
+  41748	     96	   2408	  44252	   acdc	Course.elf
 Finished building: default.size.stdout
  
 Finished building: Course.list
- 
-22:04:07 **** Incremental Build of configuration Debug for project Course ****
-make -j16 all 
-arm-none-eabi-size  Course.elf 
-   text	   data	    bss	    dec	    hex	filename
-  41848	     96	   2416	  44360	   ad48	Course.elf
-Finished building: default.size.stdout
  

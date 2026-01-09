@@ -9,7 +9,8 @@
 #ifndef _F6X8M_H
 #define _F6X8M_H
 
-#include <types.h>
+//#include <types.h>
+#include <stdint.h>
 
 // ����� ������������, 6�8 ��������
 #define f6x8_MONO_WIDTH         6

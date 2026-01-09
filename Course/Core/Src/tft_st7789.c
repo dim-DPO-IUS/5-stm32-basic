@@ -4,6 +4,7 @@
  *  Created on: Jan 7, 2026
  *      Author: dim0k
  */
+#include <stdlib.h> // malloc/free
 #include "tft_st7789.h"
 #include <string.h>
 #include <stdio.h>  // Добавляем для snprintf
@@ -130,11 +131,6 @@ static void TFT_WriteData(uint8_t data) {
 //	while (tft_spi->State == HAL_SPI_STATE_BUSY)
 //		; // ЖДАТЬ
 	HAL_SPI_Transmit(tft_spi, &data, 1, 10);
-}
-
-static void TFT_WriteDataBurst(uint8_t *data, uint32_t size) {
-	TFT_DC_DATA();
-	HAL_SPI_Transmit(tft_spi, data, size, 1000);
 }
 
 // Инициализация (на основе Fixed_ST7789_Init)

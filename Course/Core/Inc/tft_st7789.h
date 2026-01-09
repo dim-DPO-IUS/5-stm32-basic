@@ -199,11 +199,5 @@ void TFT_DrawProgressBar(uint16_t x, uint16_t y, uint16_t width,
 void TFT_DrawHProgressBar(uint16_t x, uint16_t y, uint16_t width,
 		uint16_t height, uint16_t fill_percent, uint16_t fill_color,
 		uint16_t bg_color);
-// ============================================================================
-// ВНУТРЕННИЕ ФУНКЦИИ (не для использования вне библиотеки)
-// ============================================================================
-static void TFT_WriteCommand(uint8_t cmd);
-static void TFT_WriteData(uint8_t data);
-static void TFT_WriteDataBurst(uint8_t *data, uint32_t size);
 
 #endif // TFT_ST7789_H
